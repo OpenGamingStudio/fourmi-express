@@ -1,9 +1,9 @@
 import './style.css';
 import { setSound, sfx } from './audio';
-import { H, MAX_LIVES, SWITCHES, W } from './config';
+import { H, MAX_LIVES, SAVE_VERSION, SWITCHES, W } from './config';
 import { draw, newFx, type Fx } from './render';
 import { makeRng } from './rng';
-import { freshSave, load, save, type MotionPref, type SaveData } from './save';
+import { freshSave, load, sanitize, save, type MotionPref, type SaveData } from './save';
 import { newState, step, toggle, type State } from './sim';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -271,3 +271,31 @@ layout();
 fillMenu();
 show('menu');
 requestAnimationFrame(frame);
+
+/* ---------- compte OpenGamingStudio (facultatif) ---------- */
+interface AccountApi {
+  init(o: {
+    game: string;
+    version: string;
+    getSave: () => unknown;
+    applySave: (d: unknown) => void;
+    isEmpty?: (d: unknown) => boolean;
+    describe?: (d: unknown) => string;
+  }): void;
+}
+const ogs = (window as unknown as { OGSAccount?: AccountApi }).OGSAccount;
+ogs?.init({
+  game: 'fourmi-express',
+  version: String(SAVE_VERSION),
+  getSave: () => data,
+  applySave: (d) => {
+    data = sanitize(d);
+    save(store, data);
+    setSound(data.settings.sound);
+    applyMotion();
+    fillSettings();
+    fillMenu();
+  },
+  isEmpty: (d) => sanitize(d).games === 0 && sanitize(d).best === 0,
+  describe: (d) => `record ${sanitize(d).best}`,
+});
